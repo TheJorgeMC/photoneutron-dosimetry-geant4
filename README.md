@@ -166,9 +166,8 @@ Licencia MIT (ver `LICENSE`). Si usas este trabajo, cítalo con `CITATION.cff`.
 
 ---
 
-### Authors / Autores
+### Author / Autor
 - **Jorge Ramírez López** — Licenciatura en Física, CUCEI, Universidad de Guadalajara
-- **Valeria Catalina Siordia Ortíz** — Ingeniería Biomédica, CUTlajomulco, Universidad de Guadalajara
 
 **Advisors / Asesores (CICATA-Legaria, IPN):** Dr. Teodoro Rivera Montalvo ·
 Lic. Alejandra Inzunza Lugo · Lic. César Samuel Romero Núñez
