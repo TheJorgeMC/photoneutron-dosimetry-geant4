@@ -1,0 +1,340 @@
+% =============================================================================
+%  Reporte (ES) — Dosis de neutrones secundarios en fantomas de agua
+%  Fuente LaTeX (article). Compilar con pdfLaTeX + BibTeX.
+%  Las figuras se cargan desde la carpeta figures/ mediante el comando \smartfig.
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}   % 'es-tabla' => tablas se llaman "Tabla"
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=2.3cm]{geometry}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{siunitx}
+\usepackage{multirow}
+\usepackage{authblk}
+\usepackage[hidelinks]{hyperref}
+\usepackage{cite}
+
+\sisetup{detect-weight=true, detect-family=true}
+
+% --- Figura "inteligente": usa el PNG si existe; si no, muestra un placeholder ---
+\newcommand{\smartfig}[3][\linewidth]{%
+  \IfFileExists{figures/#2}%
+    {\includegraphics[width=#1]{figures/#2}}%
+    {\fbox{\parbox[c][0.22\textheight][c]{0.92\linewidth}{\centering\ttfamily
+       [figura pendiente] \detokenize{figures/#2} \\[4pt]\normalfont\small #3}}}%
+}
+
+\title{\textbf{Dosis de neutrones secundarios en fantomas de agua con fotones
+monoenergéticos mediante simulación Monte Carlo}}
+
+\author[1]{Jorge Ramírez López}
+\author[2]{Valeria Catalina Siordia Ortíz}
+\author[3]{Dr.\ Teodoro Rivera Montalvo (asesor)}
+\author[3]{Lic.\ Alejandra Inzunza Lugo (asesora)}
+\author[3]{Lic.\ César Samuel Romero Núñez (asesor)}
+\affil[1]{Licenciatura en Física, División de Ciencias Básicas, CUCEI, Universidad de Guadalajara \\ \texttt{jorge.ramirez9331@alumnos.udg.mx}}
+\affil[2]{Ingeniería Biomédica, Centro Universitario de Tlajomulco, Universidad de Guadalajara}
+\affil[3]{Laboratorio de Dosimetría, CICATA Unidad Legaria, Instituto Politécnico Nacional}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Comprender la distribución espacial de dosis es esencial para evaluar cómo la
+energía depositada por el haz alcanza el volumen tumoral minimizando la exposición
+de los tejidos sanos circundantes. En particular, la generación de neutrones
+secundarios por procesos fotonucleares constituye una fuente adicional de radiación
+que, aunque de baja magnitud, puede afectar la dosis fuera del campo e incrementar
+el riesgo de efectos biológicos no deseados. En este trabajo se caracterizó la
+distribución espacial de dosis en un fantoma de agua mediante simulaciones Monte
+Carlo en \texttt{Geant4}, con haces de fotones monoenergéticos de 6, 10, 12, 15 y
+18~MeV. Para cada energía se realizaron 100 corridas de \(10^{6}\) partículas, y los
+resultados se procesaron en \texttt{MATLAB} para obtener curvas de porcentaje de
+dosis en profundidad (PDD), métricas globales (\(D_{\max}\) y su profundidad), mapas
+2D/3D por componente e histogramas energéticos. La dosis total se descompuso en
+contribuciones primaria y secundaria (electrones, positrones, fotones y
+\textbf{neutrones}), con énfasis en la componente neutrónica. Las curvas PDD
+reprodujeron el comportamiento físico esperado. Se identificó una componente
+neutrónica de baja magnitud, creciente con la energía y espacialmente más difundida,
+coherente con la producción fotonuclear. Esto evidencia la importancia de
+cuantificar la componente neutrónica por su potencial impacto en la inducción de
+cáncer y la necesidad de considerarla en estudios dosimétricos y en la planificación
+de tratamientos de radioterapia.
+\end{abstract}
+
+\noindent\textbf{Palabras clave:} Monte Carlo, Geant4, PDD, fotoneutrones, dosimetría.
+
+% =============================================================================
+\section{Introducción}
+El cáncer, entendido como el crecimiento anómalo de células malignas, puede tratarse
+mediante radioterapia, es decir, el uso de radiación ionizante para tratar tumores
+localizados. Su aplicación exige una caracterización precisa de la dosis, tanto
+dentro como fuera del campo de tratamiento~\cite{khan2014radiation}. El porcentaje de
+dosis en profundidad (PDD) describe cómo varía la dosis absorbida con la profundidad
+cuando un haz incide sobre un paciente o maniquí~\cite{khan2014radiation}. Para ello
+se emplearon simulaciones Monte Carlo, consideradas estándar de
+oro~\cite{fielding2023montecarlo}, con el \textit{toolkit}
+Geant4~\cite{agostinelli2003geant4}, que modela con exactitud y trazabilidad las
+interacciones de la radiación con la materia.
+
+En tratamientos con fotones de alta energía (\(\gtrsim 10~\mathrm{MV}\)) pueden
+ocurrir reacciones fotonucleares que generan un campo de neutrones secundarios
+(térmicos y rápidos), contaminando el haz terapéutico con dosis no
+deseada~\cite{banaee2021}. Su impacto es significativo fuera del campo, donde los
+sistemas de planeación comerciales tienden a subestimar esta
+componente~\cite{kry2017tg158}. Cuantificar la contribución neutrónica es relevante
+por su Eficacia Biológica Relativa (RBE)~\cite{johns1983physics}: los neutrones
+presentan efectividad máxima para el daño complejo en el ADN cerca de
+\(1~\mathrm{MeV}\)~\cite{baiocco2016origin}, por lo que aun a dosis bajas su
+toxicidad motiva caracterizar la dosis física depositada~\cite{kry2017tg158}.
+
+A pesar de esta evidencia, la normativa mexicana presenta una brecha regulatoria: la
+NOM-033-NUCL-2016~\cite{nom033_2016} exige detectores de neutrones pero no establece
+procedimientos operativos ante mediciones significativas, y ni ésta ni la
+NOM-002-SSA3-2017~\cite{nom002ssa32017} detallan cómo integrar la dosis neutrónica en
+la planificación clínica. Este trabajo evalúa la distribución espacial de dosis de
+haces de fotones monoenergéticos (6, 10, 12, 15 y 18~MeV) en un fantoma de agua
+voxelizado, descomponiendo la dosis en componentes primaria y secundaria con énfasis
+en la neutrónica. El procesamiento se realizó en MATLAB R2025a sobre infraestructura
+de cómputo de alto desempeño, en el marco del XXX Verano del Programa
+Delfín~\cite{programadelfin2025} en el CICATA-Legaria del IPN.
+
+% =============================================================================
+\section{Marco teórico}
+La \textbf{dosis absorbida} \(D\) es la energía depositada por unidad de masa
+(\(D=\mathrm{d}\epsilon/\mathrm{d}m\)); su unidad SI es el gray
+(Gy)~\cite{attix2004dosimetry}. El \textbf{porcentaje de dosis en profundidad}
+normaliza la dosis a una profundidad \(d\) respecto a una de referencia (típicamente
+\(d_{\max}\))~\cite{khan2014radiation}:
+\begin{equation}
+  \mathrm{PDD}(d,\mathrm{SSD}) = 100 \times
+  \frac{D(d,\mathrm{SSD})}{D(d_{\mathrm{ref}},\mathrm{SSD})}.
+\end{equation}
+
+A energías superiores a \(\sim 10~\mathrm{MeV}\) los fotones pueden generar neutrones
+por \textbf{reacciones fotonucleares}, proceso dominado por la Resonancia Gigante
+Dipolar; para el oxígeno-16 del agua la sección eficaz tiene un pico cercano a
+23~MeV~\cite{geant4physref}. Los fotoneutrones se moderan por colisiones con
+hidrógeno hasta volverse térmicos (\(\sim 0.025~\mathrm{eV}\))~\cite{lakshmanan1982}.
+Dado que la dosis no predice por sí sola el efecto biológico, se emplea la RBE, que
+compara una radiación de prueba con una de referencia para el mismo
+efecto~\cite{reeve2018}. Los neutrones producen secundarias de alta Transferencia
+Lineal de Energía (LET), causando daño complejo y una RBE significativamente mayor
+que 1~\cite{reeve2018}.
+
+% =============================================================================
+\section{Metodología}
+
+\subsection{Configuración de Geant4}
+Las simulaciones se ejecutaron en \texttt{Geant4 v11.3.2} en modo multihilo. La
+física electromagnética se describió con \texttt{G4EmStandardPhysics}; la producción
+de neutrones por reacciones fotonucleares se habilitó con \texttt{G4EmExtraPhysics}
+(proceso \texttt{GammaNuclear}) junto con \texttt{G4HadronPhysicsQGSP\_BIC\_HP} y
+\texttt{G4HadronElasticPhysics} para la dispersión elástica e interacciones
+inelásticas de neutrones con precisión en el rango térmico a intermedio (modelo
+\textit{High Precision}). Es una versión optimizada de la lista
+\texttt{QGSP\_BIC\_HP}~\cite{geant4qgspbic}, sin procesos de decaimiento ni iones por
+su baja relevancia en haces de fotones de 6--18~MeV.
+
+\subsection{Entorno de simulación}
+El entorno se implementó con \texttt{G4VUserDetectorConstruction}, definiendo un
+fantoma cúbico de agua (\texttt{G4\_WATER}) de 40~cm de lado. El volumen se
+discretizó en una malla de \(27\times27\times200\) vóxeles; dado que 40~cm no es
+divisible entre los 15~mm nominales, el paso real resultó de \(400/27=14.8148\)~mm en
+\(X/Y\) y exactamente 2~mm en \(Z\) (volumen \(\approx 439~\mathrm{mm}^3\) por
+vóxel).\footnote{El diseño nominal era \(15\times15\times2~\mathrm{mm}^3\); el
+redondeo a 27 vóxeles fija el paso real citado.} Un esquema se muestra en la
+Fig.~\ref{fig:esquema} y una vista del entorno en la Fig.~\ref{fig:entorno}.
+
+\begin{figure}[t]
+  \centering
+  \smartfig[0.8\linewidth]{esquema_geometrico.png}{Esquema geométrico del entorno.}
+  \caption{Esquema geométrico del entorno de simulación en Geant4.}
+  \label{fig:esquema}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \smartfig[0.85\linewidth]{visualizador_18MeV.png}{Trazas del haz en el fantoma.}
+  \caption{Trazas de un haz angosto de 10 fotones primarios de 18~MeV interactuando
+  con el fantoma de agua. La malla mostrada es de baja resolución, sólo ilustrativa.}
+  \label{fig:entorno}
+\end{figure}
+
+\subsection{Generación del haz y ejecución}
+El haz se configuró con \texttt{G4VUserPrimaryGeneratorAction} y se controló mediante
+macros: fotones monoenergéticos de 6, 10, 12, 15 y 18~MeV incidiendo
+perpendicularmente desde una fuente puntual centrada (campo plano ideal). Las
+acciones por corrida se gestionaron con \texttt{G4UserRunAction} y
+\texttt{G4VUserActionInitialization}, registrando la energía depositada por el haz
+primario y por las secundarias. Los datos se guardaron en \texttt{.csv} (uno por
+ejecución) con todos los vóxeles de dosis no nula y el desglose por componente. Cada
+simulación usó \(10^{6}\) partículas por ejecución, con 100 ejecuciones
+independientes por energía. La ejecución en lotes se automatizó con \texttt{bash} y
+archivos macro.
+
+\subsection{Procesamiento y estimación de incertidumbre}
+El procesamiento se automatizó en \texttt{MATLAB}~\cite{matlab2024}: lectura de los
+CSV crudos, cálculo de la dosis media 3D por vóxel, su desviación estándar y la curva
+PDD; métricas por corrida y por energía (\(D_{\max}\), su profundidad, medias,
+desviaciones y \(\epsilon=100\,\sigma/\mu\)); histogramas; mapas 2D/3D por componente;
+y exportación de archivos promediados y tablas de resumen.
+
+Para cada vóxel con dosis media \(\bar D>0\) se estimó la incertidumbre estadística
+de la media como \(\epsilon_{\text{vox}} = 100\,(\sigma_{\text{vox}}/\sqrt{N})/\bar
+D\), reportando su promedio espacial \(\overline{\epsilon}_{\text{vox}}\) sobre los
+vóxeles con \(\bar D>0\). El uso del SEM relativo es consistente con la práctica en
+códigos Monte Carlo consolidados~\cite{mcnp_v4c2000}. Para métricas globales por
+energía se reporta \(\epsilon=100\,\sigma/\mu\), que cuantifica la variabilidad entre
+corridas. Ambos caracterizan aspectos complementarios de la incertidumbre.
+
+% =============================================================================
+\section{Resultados}
+
+\begin{figure}[t]
+  \centering
+  \smartfig[0.85\linewidth]{PDD_comparacion.png}{Curvas PDD por energía.}
+  \caption{Curvas de PDD para las energías consideradas.}
+  \label{fig:pdd}
+\end{figure}
+
+\begin{table}[t]
+  \centering
+  \caption{Resumen de parámetros dosimétricos por energía. Medias \(\mu\) y errores
+  relativos \(\epsilon=100\,\sigma/\mu\) estimados a partir de 100 corridas por
+  energía.}
+  \label{tab:resumen}
+  \begin{tabular}{l S[table-format=2.2] S[table-format=1.2] S[table-format=2.2] S[table-format=2.2] S[table-format=1.2] S[table-format=1.2]}
+    \toprule
+    \multirow{2}{*}{\textbf{Energía}} &
+      \multicolumn{2}{c}{\textbf{Dosis máxima}} &
+      \multicolumn{2}{c}{\textbf{Profundidad de \(D_{\max}\)}} &
+      \multicolumn{2}{c}{\textbf{Dosis total}} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(l){6-7}
+      & {\(\mu\) [\si{\nano\gray}]} & {\(\epsilon\) [\%]}
+      & {\(\mu\) [\si{\milli\metre}]} & {\(\epsilon\) [\%]}
+      & {\(\mu\) [\si{\micro\gray}]} & {\(\epsilon\) [\%]} \\
+    \midrule
+    6 MeV  & 11.03 & 0.59 & 26.26 & 10.10 & 1.61 & 0.08 \\
+    10 MeV & 15.59 & 0.50 & 43.88 &  6.47 & 2.37 & 0.09 \\
+    12 MeV & 17.79 & 0.42 & 52.58 &  6.12 & 2.74 & 0.11 \\
+    15 MeV & 21.12 & 0.35 & 65.72 &  4.17 & 3.28 & 0.12 \\
+    18 MeV & 24.39 & 0.39 & 77.26 &  3.94 & 3.82 & 0.11 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \centering
+  \caption{Error relativo medio por vóxel de la dosis media
+  (\(\overline{\epsilon}_{\text{vox}}=\mathrm{SEM}/\bar D\), en \%). Promedio espacial
+  sobre vóxeles con dosis \(>0\).}
+  \label{tab:err_voxel}
+  \begin{tabular}{l S[table-format=1.2]}
+    \toprule
+    \textbf{Energía} & {\(\overline{\epsilon}_{\text{vox}}\) [\%]} \\
+    \midrule
+    6 MeV  & 5.53 \\
+    10 MeV & 5.54 \\
+    12 MeV & 5.49 \\
+    15 MeV & 5.44 \\
+    18 MeV & 5.36 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_6MeV.png}{6 MeV}\caption{6 MeV}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_10MeV.png}{10 MeV}\caption{10 MeV}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_12MeV.png}{12 MeV}\caption{12 MeV}\end{subfigure}
+  \\[4pt]
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_15MeV.png}{15 MeV}\caption{15 MeV}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_18MeV.png}{18 MeV}\caption{18 MeV}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\end{subfigure}
+  \caption{Histogramas de \textbf{dosis máxima} (nGy) por energía; valores de \(\mu\),
+  \(\sigma\) y \(\epsilon\) en la Tabla~\ref{tab:resumen}.}
+  \label{fig:hist-dosis}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \smartfig[0.85\linewidth]{Maps2D_15MeV.png}{Mapas 2D a 15 MeV.}
+  \caption{Mapas de dosis 2D (proyección de máxima intensidad en XY) para el haz de
+  15~MeV: dosis total, fotones primarios, electrones, positrones, fotones, neutrones
+  y otras secundarias.}
+  \label{fig:maps2d}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_Total.png}{Total}\caption{Dosis total}\end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_eminus.png}{e-}\caption{Electrones}\end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_eplus.png}{e+}\caption{Positrones}\end{subfigure}
+  \\[4pt]
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_neutron.png}{n}\caption{Neutrones}\end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_other.png}{otras}\caption{Otras}\end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\textwidth}\end{subfigure}
+  \caption{Distribución de dosis 3D para el haz de 15~MeV. Los vóxeles se visualizan
+  si su dosis normalizada supera 25\,\% (1\,\% para neutrones).}
+  \label{fig:maps3d}
+\end{figure}
+
+% =============================================================================
+\section{Conclusiones}
+Las curvas de PDD (Fig.~\ref{fig:pdd}) reproducen el comportamiento físico esperado:
+región de acumulación, aumento de la profundidad de \(D_{\max}\) con la energía y
+caída suave en la cola, lo que respalda la consistencia del modelo. Las métricas
+globales muestran gran estabilidad: \(D_{\max}\) presenta errores relativos muy bajos
+(\(\epsilon\approx 0.35\text{--}0.59\%\)), mientras la profundidad de \(D_{\max}\)
+tiene mayor dispersión que decrece con la energía (\(\epsilon\) de \(\sim 10\%\) a
+\(\sim 4\%\)), en concordancia con los histogramas (Fig.~\ref{fig:hist-dosis}) y la
+Tabla~\ref{tab:resumen}. A nivel espacial, el SEM relativo vóxel a vóxel se mantuvo en
+\(5.3\text{--}5.5\%\) (Tabla~\ref{tab:err_voxel}).
+
+Las visualizaciones 2D/3D (Figs.~\ref{fig:maps2d} y \ref{fig:maps3d}) muestran que
+las componentes cargadas (\(e^-/e^+\)) concentran la dosis cerca del eje del haz,
+mientras que los neutrones secundarios aparecen más dispersos y a niveles bajos, con
+mayor presencia relativa a energías altas. Aunque su contribución dosimétrica es
+pequeña, su potencial relevancia radiobiológica justifica caracterizarla por separado
+y, en el futuro, traducirla mediante magnitudes como LET y RBE. El trabajo constituye
+un marco reproducible para comparar energías y componentes de dosis.
+
+\subsection*{Limitaciones y trabajo futuro}
+(1) Haces monoenergéticos e idealizados; (2) maniquí homogéneo y sin cabezal de
+acelerador; (3) resolución de vóxel fija; (4) no se evaluó LET/RBE. Extensiones
+propuestas: incorporar espectros clínicos y geometría del cabezal; estudiar
+escenarios fuera de campo; calcular LET y estimar RBE para secundarios
+(especialmente neutrones); y aplicar reducción de varianza para disminuir
+\(\overline{\epsilon}_{\text{vox}}\) manteniendo el costo de cómputo.
+
+\subsection*{Agradecimientos}
+Al Programa Delfín y a los compañeros delfines; al CICATA-Legaria y al equipo del
+Laboratorio de Dosimetría; y en especial al Dr.\ Teodoro, a Alejandra y a César por
+su guía, paciencia y acompañamiento.
+
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\end{document}

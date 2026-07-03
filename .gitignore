@@ -1,0 +1,44 @@
+# ---- Build (Geant4 / CMake) ----
+simulation/build/
+build/
+*.o
+*.obj
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# ---- Simulation output ----
+output_final.csv
+temp_output_*.csv
+*.out
+
+# ---- Datasets (too large for git; keep locally) ----
+datos finales/
+datos_finales/
+data/
+*.csv
+# ...but keep small example/schema CSVs if you add any:
+!analysis/examples/*.csv
+
+# ---- MATLAB ----
+*.asv
+*.mat
+slprj/
+
+# ---- LaTeX ----
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+# ---- OS / editors ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

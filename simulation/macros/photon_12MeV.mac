@@ -1,0 +1,7 @@
+/run/initialize
+/gun/particle gamma
+/gun/energy 12 MeV
+/gun/position 0 0 -120 cm
+/gun/direction 0 0 1
+/run/verbose 1
+/run/beamOn 1000000

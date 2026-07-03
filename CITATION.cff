@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite it as below."
+title: "Photoneutron & Secondary-Particle Dose Decomposition in a Water Phantom (Geant4 + MATLAB)"
+authors:
+  - family-names: "Ramírez López"
+    given-names: "Jorge"
+    affiliation: "Universidad de Guadalajara (CUCEI)"
+  - family-names: "Siordia Ortíz"
+    given-names: "Valeria Catalina"
+    affiliation: "Universidad de Guadalajara (CUTlajomulco)"
+date-released: 2025-11-15
+license: MIT
+keywords:
+  - Monte Carlo
+  - Geant4
+  - photoneutrons
+  - dosimetry
+  - percentage depth dose
+  - radiotherapy
+abstract: >
+  Monte Carlo characterization in Geant4 of the spatial dose distribution of
+  monoenergetic photon beams (6, 10, 12, 15, 18 MeV) in a voxelized water
+  phantom, decomposing total dose into primary and secondary components
+  (electrons, positrons, photons and neutrons), with emphasis on the
+  photoneutron contribution. Post-processing in MATLAB.

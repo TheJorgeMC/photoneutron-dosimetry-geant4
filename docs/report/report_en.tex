@@ -1,0 +1,327 @@
+% =============================================================================
+%  Report (EN) — Secondary-neutron dose in water phantoms with monoenergetic photons
+%  LaTeX source (article). Compile with pdfLaTeX + BibTeX.
+%  Figures are loaded from the figures/ folder via the \smartfig command.
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=2.3cm]{geometry}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{siunitx}
+\usepackage{multirow}
+\usepackage{authblk}
+\usepackage[hidelinks]{hyperref}
+\usepackage{cite}
+
+\sisetup{detect-weight=true, detect-family=true}
+
+% --- "Smart" figure: use the PNG if present, otherwise show a placeholder box ---
+\newcommand{\smartfig}[3][\linewidth]{%
+  \IfFileExists{figures/#2}%
+    {\includegraphics[width=#1]{figures/#2}}%
+    {\fbox{\parbox[c][0.22\textheight][c]{0.92\linewidth}{\centering\ttfamily
+       [missing figure] \detokenize{figures/#2} \\[4pt]\normalfont\small #3}}}%
+}
+
+\title{\textbf{Secondary-Neutron Dose in Water Phantoms Irradiated with
+Monoenergetic Photons via Monte Carlo Simulation}}
+
+\author[1]{Jorge Ram\'irez L\'opez}
+\author[2]{Valeria Catalina Siordia Ort\'iz}
+\author[3]{Dr.\ Teodoro Rivera Montalvo (advisor)}
+\author[3]{Alejandra Inzunza Lugo (advisor)}
+\author[3]{C\'esar Samuel Romero N\'u\~nez (advisor)}
+\affil[1]{Physics B.Sc., Division of Basic Sciences, CUCEI, University of Guadalajara \\ \texttt{jorge.ramirez9331@alumnos.udg.mx}}
+\affil[2]{Biomedical Engineering, Tlajomulco University Center, University of Guadalajara}
+\affil[3]{Dosimetry Laboratory, CICATA Legaria Unit, Instituto Polit\'ecnico Nacional}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Understanding the spatial dose distribution is essential to assess how beam energy
+reaches the tumor volume while minimizing exposure of surrounding healthy tissue. In
+particular, secondary neutrons produced by photonuclear processes are an additional
+radiation source that, although small in magnitude, can affect out-of-field dose and
+raise the risk of unwanted biological effects. In this work we characterized the
+spatial dose distribution in a water phantom using Monte Carlo simulations in
+\texttt{Geant4} for monoenergetic photon beams of 6, 10, 12, 15 and 18~MeV. For each
+energy, 100 runs of \(10^{6}\) particles were performed, and the results were
+processed in \texttt{MATLAB} to obtain percentage depth-dose (PDD) curves, global
+metrics (\(D_{\max}\) and its depth), 2D/3D maps per component and energy histograms.
+The total dose was decomposed into primary and secondary contributions (electrons,
+positrons, photons and \textbf{neutrons}), emphasizing the neutron component. The PDD
+curves reproduced the expected physics. A low-magnitude neutron component was
+identified, growing with energy and spatially more diffuse, consistent with
+photonuclear production. This highlights the importance of quantifying the neutron
+component for its potential impact on cancer induction and the need to account for it
+in dosimetric studies and radiotherapy treatment planning.
+\end{abstract}
+
+\noindent\textbf{Keywords:} Monte Carlo, Geant4, PDD, photoneutrons, dosimetry.
+
+% =============================================================================
+\section{Introduction}
+Cancer, the abnormal growth of malignant cells, can be treated with radiotherapy: the
+use of ionizing radiation to treat localized tumors. Its application demands accurate
+dose characterization, both inside and outside the treatment
+field~\cite{khan2014radiation}. The percentage depth dose (PDD) describes how
+absorbed dose varies with depth when a beam is incident on a patient or
+phantom~\cite{khan2014radiation}. To this end we used Monte Carlo simulations---the
+gold standard~\cite{fielding2023montecarlo}---with the Geant4
+toolkit~\cite{agostinelli2003geant4}, which accurately models radiation--matter
+interactions with full traceability.
+
+In high-energy photon treatments (\(\gtrsim 10~\mathrm{MV}\)), photonuclear reactions
+can occur and generate a field of secondary neutrons (thermal and fast) that
+contaminates the therapeutic beam with unwanted dose~\cite{banaee2021}. Its impact is
+significant out of field, where commercial treatment planning systems tend to
+underestimate this component~\cite{kry2017tg158}. Quantifying the neutron
+contribution matters because of its Relative Biological Effectiveness
+(RBE)~\cite{johns1983physics}: neutrons peak in effectiveness for complex DNA damage
+near \(1~\mathrm{MeV}\)~\cite{baiocco2016origin}, so even at low doses their toxicity
+motivates characterizing the physical dose they deposit~\cite{kry2017tg158}.
+
+Despite this evidence, Mexican regulation shows a gap: NOM-033-NUCL-2016
+\cite{nom033_2016} requires neutron detectors but sets no operational procedures for
+significant measurements, and neither it nor NOM-002-SSA3-2017~\cite{nom002ssa32017}
+details how to integrate neutron dose into clinical planning. This work evaluates the
+spatial dose distribution of monoenergetic photon beams (6, 10, 12, 15 and 18~MeV) in
+a voxelized water phantom, decomposing the dose into primary and secondary components
+with emphasis on the neutron component. Processing was done in MATLAB R2025a on
+high-performance computing infrastructure, within the XXX Delf\'in Program research
+summer~\cite{programadelfin2025} at CICATA-Legaria, IPN.
+
+% =============================================================================
+\section{Theoretical background}
+\textbf{Absorbed dose} \(D\) is the energy deposited per unit mass
+(\(D=\mathrm{d}\epsilon/\mathrm{d}m\)); its SI unit is the gray
+(Gy)~\cite{attix2004dosimetry}. The \textbf{percentage depth dose} normalizes the dose
+at depth \(d\) to a reference depth (typically \(d_{\max}\))~\cite{khan2014radiation}:
+\begin{equation}
+  \mathrm{PDD}(d,\mathrm{SSD}) = 100 \times
+  \frac{D(d,\mathrm{SSD})}{D(d_{\mathrm{ref}},\mathrm{SSD})}.
+\end{equation}
+
+Above \(\sim 10~\mathrm{MeV}\), photons can produce neutrons via \textbf{photonuclear
+reactions}, a process dominated by the Giant Dipole Resonance; for oxygen-16 in water
+the cross section peaks near 23~MeV~\cite{geant4physref}. Photoneutrons thermalize
+through collisions with hydrogen down to \(\sim
+0.025~\mathrm{eV}\)~\cite{lakshmanan1982}. Since dose alone does not predict
+biological effect, the RBE compares a test radiation to a reference for the same
+effect~\cite{reeve2018}. Neutrons produce high linear-energy-transfer (LET)
+secondaries, causing complex damage and an RBE significantly greater than
+1~\cite{reeve2018}.
+
+% =============================================================================
+\section{Methodology}
+
+\subsection{Geant4 configuration}
+Simulations ran in \texttt{Geant4 v11.3.2} in multithreaded mode. Electromagnetic
+physics used \texttt{G4EmStandardPhysics}; neutron production by photonuclear
+reactions was enabled with \texttt{G4EmExtraPhysics} (\texttt{GammaNuclear} process)
+together with \texttt{G4HadronPhysicsQGSP\_BIC\_HP} and
+\texttt{G4HadronElasticPhysics} for elastic scattering and inelastic neutron
+interactions with thermal-to-intermediate precision (High Precision model). This is
+an optimized version of the \texttt{QGSP\_BIC\_HP} list~\cite{geant4qgspbic}, without
+decay or ion processes given their low relevance for 6--18~MeV photon beams.
+
+\subsection{Simulation environment}
+The environment was implemented with \texttt{G4VUserDetectorConstruction}, defining a
+cubic water phantom (\texttt{G4\_WATER}) 40~cm on a side. The volume was discretized
+into a \(27\times27\times200\) voxel grid; since 40~cm is not divisible by the nominal
+15~mm, the real pitch is \(400/27=14.8148\)~mm in \(X/Y\) and exactly 2~mm in \(Z\)
+(volume \(\approx 439~\mathrm{mm}^3\) per voxel).\footnote{The nominal design was
+\(15\times15\times2~\mathrm{mm}^3\); rounding to 27 voxels fixes the quoted real
+pitch.} A geometry sketch is shown in Fig.~\ref{fig:esquema} and a view of the
+environment in Fig.~\ref{fig:entorno}.
+
+\begin{figure}[t]
+  \centering
+  \smartfig[0.8\linewidth]{esquema_geometrico.png}{Geometry sketch.}
+  \caption{Geometry sketch of the Geant4 simulation environment.}
+  \label{fig:esquema}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \smartfig[0.85\linewidth]{visualizador_18MeV.png}{Beam tracks in the phantom.}
+  \caption{Tracks of a narrow beam of 10 primary 18~MeV photons interacting with the
+  water phantom. The mesh shown is low-resolution and illustrative only.}
+  \label{fig:entorno}
+\end{figure}
+
+\subsection{Beam generation and execution}
+The beam was configured with \texttt{G4VUserPrimaryGeneratorAction} and controlled via
+macros: monoenergetic photons of 6, 10, 12, 15 and 18~MeV incident perpendicularly
+from a centered point source (ideal flat field). Per-run actions used
+\texttt{G4UserRunAction} and \texttt{G4VUserActionInitialization}, recording the
+energy deposited by the primary beam and by secondaries. Data were saved to
+\texttt{.csv} (one per run) with all non-zero-dose voxels and the per-component
+breakdown. Each simulation used \(10^{6}\) particles per run, with 100 independent
+runs per energy. Batch execution was automated with \texttt{bash} and macro files.
+
+\subsection{Processing and uncertainty estimation}
+Processing was automated in \texttt{MATLAB}~\cite{matlab2024}: reading the raw CSVs,
+computing the 3D mean dose per voxel, its standard deviation and the PDD curve;
+per-run and per-energy metrics (\(D_{\max}\), its depth, means, standard deviations
+and \(\epsilon=100\,\sigma/\mu\)); histograms; 2D/3D maps per component; and export of
+averaged files and summary tables.
+
+For each voxel with mean dose \(\bar D>0\), the statistical uncertainty of the mean
+was estimated as \(\epsilon_{\text{vox}} =
+100\,(\sigma_{\text{vox}}/\sqrt{N})/\bar D\), reporting its spatial average
+\(\overline{\epsilon}_{\text{vox}}\) over voxels with \(\bar D>0\). Using the relative
+SEM is consistent with practice in established Monte Carlo
+codes~\cite{mcnp_v4c2000}. For global per-energy metrics we report
+\(\epsilon=100\,\sigma/\mu\), quantifying run-to-run variability. Both characterize
+complementary aspects of the uncertainty.
+
+% =============================================================================
+\section{Results}
+
+\begin{figure}[t]
+  \centering
+  \smartfig[0.85\linewidth]{PDD_comparacion.png}{PDD curves per energy.}
+  \caption{PDD curves for the considered energies.}
+  \label{fig:pdd}
+\end{figure}
+
+\begin{table}[t]
+  \centering
+  \caption{Summary of dosimetric parameters per beam energy. Means \(\mu\) and
+  relative errors \(\epsilon=100\,\sigma/\mu\) estimated from 100 runs per energy.}
+  \label{tab:resumen}
+  \begin{tabular}{l S[table-format=2.2] S[table-format=1.2] S[table-format=2.2] S[table-format=2.2] S[table-format=1.2] S[table-format=1.2]}
+    \toprule
+    \multirow{2}{*}{\textbf{Energy}} &
+      \multicolumn{2}{c}{\textbf{Max.\ dose}} &
+      \multicolumn{2}{c}{\textbf{Depth of \(D_{\max}\)}} &
+      \multicolumn{2}{c}{\textbf{Total dose}} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(l){6-7}
+      & {\(\mu\) [\si{\nano\gray}]} & {\(\epsilon\) [\%]}
+      & {\(\mu\) [\si{\milli\metre}]} & {\(\epsilon\) [\%]}
+      & {\(\mu\) [\si{\micro\gray}]} & {\(\epsilon\) [\%]} \\
+    \midrule
+    6 MeV  & 11.03 & 0.59 & 26.26 & 10.10 & 1.61 & 0.08 \\
+    10 MeV & 15.59 & 0.50 & 43.88 &  6.47 & 2.37 & 0.09 \\
+    12 MeV & 17.79 & 0.42 & 52.58 &  6.12 & 2.74 & 0.11 \\
+    15 MeV & 21.12 & 0.35 & 65.72 &  4.17 & 3.28 & 0.12 \\
+    18 MeV & 24.39 & 0.39 & 77.26 &  3.94 & 3.82 & 0.11 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \centering
+  \caption{Mean per-voxel relative error of the mean dose
+  (\(\overline{\epsilon}_{\text{vox}}=\mathrm{SEM}/\bar D\), in \%). Spatial average
+  over voxels with dose \(>0\).}
+  \label{tab:err_voxel}
+  \begin{tabular}{l S[table-format=1.2]}
+    \toprule
+    \textbf{Energy} & {\(\overline{\epsilon}_{\text{vox}}\) [\%]} \\
+    \midrule
+    6 MeV  & 5.53 \\
+    10 MeV & 5.54 \\
+    12 MeV & 5.49 \\
+    15 MeV & 5.44 \\
+    18 MeV & 5.36 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_6MeV.png}{6 MeV}\caption{6 MeV}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_10MeV.png}{10 MeV}\caption{10 MeV}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_12MeV.png}{12 MeV}\caption{12 MeV}\end{subfigure}
+  \\[4pt]
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_15MeV.png}{15 MeV}\caption{15 MeV}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \smartfig{Hist_DosisMax_18MeV.png}{18 MeV}\caption{18 MeV}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\end{subfigure}
+  \caption{Histograms of \textbf{maximum dose} (nGy) per energy; \(\mu\), \(\sigma\)
+  and \(\epsilon\) values in Table~\ref{tab:resumen}.}
+  \label{fig:hist-dosis}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \smartfig[0.85\linewidth]{Maps2D_15MeV.png}{2D maps at 15 MeV.}
+  \caption{2D dose maps (maximum-intensity projection in XY) for the 15~MeV beam:
+  total dose, primary photons, electrons, positrons, photons, neutrons and other
+  secondaries.}
+  \label{fig:maps2d}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_Total.png}{Total}\caption{Total dose}\end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_eminus.png}{e-}\caption{Electrons}\end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_eplus.png}{e+}\caption{Positrons}\end{subfigure}
+  \\[4pt]
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_neutron.png}{n}\caption{Neutrons}\end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\textwidth}\centering
+    \smartfig{Map3D_15MeV_other.png}{other}\caption{Other}\end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\textwidth}\end{subfigure}
+  \caption{3D dose distribution for the 15~MeV beam. Voxels are rendered if their
+  normalized dose exceeds 25\,\% (1\,\% for neutrons).}
+  \label{fig:maps3d}
+\end{figure}
+
+% =============================================================================
+\section{Conclusions}
+The PDD curves (Fig.~\ref{fig:pdd}) reproduce the expected physics: build-up region,
+\(D_{\max}\) depth increasing with energy, and a soft tail, supporting model
+consistency. Global metrics are highly stable: \(D_{\max}\) shows very low relative
+errors (\(\epsilon\approx 0.35\text{--}0.59\%\)), while the depth of \(D_{\max}\) has
+larger dispersion that decreases with energy (\(\epsilon\) from \(\sim 10\%\) to
+\(\sim 4\%\)), in agreement with the histograms (Fig.~\ref{fig:hist-dosis}) and
+Table~\ref{tab:resumen}. Spatially, the per-voxel relative SEM stayed within
+\(5.3\text{--}5.5\%\) (Table~\ref{tab:err_voxel}).
+
+The 2D/3D visualizations (Figs.~\ref{fig:maps2d} and \ref{fig:maps3d}) show that
+charged components (\(e^-/e^+\)) concentrate dose near the beam axis, whereas
+secondary neutrons appear more scattered and at low levels, with greater relative
+presence at high energies. Although their dosimetric contribution is small, their
+potential radiobiological relevance justifies characterizing them separately and,
+in future work, translating them via LET and RBE. This work provides a reproducible
+framework to compare energies and dose components.
+
+\subsection*{Limitations and future work}
+(1) Monoenergetic, idealized beams; (2) homogeneous phantom without accelerator head;
+(3) fixed voxel resolution; (4) LET/RBE not evaluated. Proposed extensions:
+incorporate clinical spectra and head geometry; study out-of-field scenarios; compute
+LET and estimate RBE for secondaries (especially neutrons); and apply
+variance reduction to lower \(\overline{\epsilon}_{\text{vox}}\) at fixed compute cost.
+
+\subsection*{Acknowledgments}
+To the Delf\'in Program and fellow participants; to CICATA-Legaria and the Dosimetry
+Laboratory team; and especially to Dr.\ Teodoro, Alejandra and C\'esar for their
+guidance, patience and support.
+
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\end{document}

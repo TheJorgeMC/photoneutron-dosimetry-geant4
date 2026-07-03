@@ -1,0 +1,49 @@
+# 1. ABRIR EL VISUALIZADOR
+# Usa el driver que funcione en tu sistema (TSGQt es una opción robusta)
+/vis/open
+
+# 2. CREAR LA ESCENA
+# Desactiva el refresco automático para acelerar la configuración
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+/vis/drawVolume
+
+# 3. CONFIGURAR LA VISTA
+# Cambia a una vista en perspectiva para mejor percepción de profundidad
+/vis/viewer/set/viewpointThetaPhi 70 20
+# Ajusta el zoom para que el fantoma ocupe la mayor parte de la pantalla
+/vis/viewer/zoom 1.2
+
+# 4. CONFIGURAR LA APARIENCIA DE LOS VOLÚMENES
+# Haz el volumen del "Mundo" invisible para no obstruir la vista
+/vis/geometry/set/visibility World 0 false
+# Haz el fantoma semitransparente para poder ver el interior y las trayectorias
+/vis/geometry/set/colour Phantom 0 0 0 1 .3  # Azul semitransparente
+# Cambia el estilo a "wireframe" para ver las divisiones de los vóxeles
+/vis/viewer/set/style wireframe
+
+# 5. CONFIGURAR TRAYECTORIAS Y HITS
+# Dibuja las trayectorias de las partículas de forma suave
+/vis/scene/add/trajectories smooth
+# Colorea las trayectorias según la carga de la partícula
+/vis/modeling/trajectories/create/drawByCharge
+/vis/modeling/trajectories/drawByCharge-0/set e- red
+/vis/modeling/trajectories/drawByCharge-0/set e+ blue
+/vis/modeling/trajectories/drawByCharge-0/set gamma green
+# Muestra los "hits" (depósitos de energía) como puntos
+/vis/scene/add/hits
+
+# 6. CONFIGURAR ACCIÓN AL FINAL DEL EVENTO
+# Acumula las trayectorias de todos los eventos de un solo "run"
+/vis/scene/endOfEventAction accumulate
+
+# 7. AÑADIR DECORACIONES ÚTILES
+# Agrega ejes de coordenadas en la esquina para orientación
+/vis/scene/add/axes
+
+# 8. FINALIZAR Y REACTIVAR EL REFRESCO
+# Vuelve a activar el refresco automático para ver los eventos en tiempo real
+/vis/viewer/set/autoRefresh true
+/vis/verbose warnings
+# Refresca el visor para aplicar todos los cambios
+/vis/viewer/flush
